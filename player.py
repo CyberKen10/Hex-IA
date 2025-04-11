@@ -31,26 +31,23 @@ class IAPlayer(Player):
             if score > best_score:
                 best_score = score
                 best_move = move
-
+            alpha = max(alpha, best_score)
         return best_move if best_move else random.choice(possible_moves)
     def _minimax(self, board: HexBoard, depth: int, is_maximizing: bool,alpha: float, beta: float) -> float:
         opponent = 2 if self.player_id == 1 else 1
-
-        # Terminal conditions
         if board.check_connection(self.player_id):
             return 1000
         if board.check_connection(opponent):
             return -1000
         if depth == 0 or not board.get_possible_moves():
-            return 0
-
+            return self._evaluate_board(board)
         possible_moves = board.get_possible_moves()
-
         if is_maximizing:
-            best_eval = float('-inf')
+            max_eval = float('-inf')
             for move in possible_moves:
                 new_board = board.clone()
                 new_board.place_piece(move[0], move[1], self.player_id)
+                eval = self._minimax(new_board, depth-1, False, alpha, beta)
                 max_eval = max(max_eval, eval)
                 alpha = max(alpha, eval)
                 if beta <= alpha:
@@ -89,13 +86,13 @@ class IAPlayer(Player):
                     score += 15
                 if pos[0] == board.size - 1:
                     score += 15
-
         return score
 
     def _sort_moves(self, board: HexBoard, moves: list) -> list:
         move_scores = []
         for move in moves:
-            score = - (abs(move[0] - board.size // 2) + abs(move[1] - board.size // 2))
+            score = 0
+            score -= abs(move[0] - board.size//2) + abs(move[1] - board.size//2)
             if self.player_id == 1:
                 if move[1] == 0 or move[1] == board.size - 1:
                     score += 5
