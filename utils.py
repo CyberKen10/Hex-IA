@@ -12,8 +12,6 @@ def dfs(g,player_id,size):
             if dfs_visit(g,u,visited,p,size,player_id):
                 return True
     return False
-
-# Eda xd
 def dfs_visit(g,u,visited,p,size,player_id):
     visited.add((u))
     for dir in adj:

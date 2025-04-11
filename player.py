@@ -21,17 +21,19 @@ class IAPlayer(Player):
         possible_moves = self._sort_moves(board, possible_moves)
         best_score = float('-inf')
         best_move = None
+        alpha = float('-inf')
+        beta = float('inf')
 
         for move in possible_moves:
             new_board = board.clone()
             new_board.place_piece(move[0], move[1], self.player_id)
-            score = self._minimax(new_board, self.max_depth - 1, False)
+            score = self._minimax(new_board, self.max_depth - 1, False,alpha, beta)
             if score > best_score:
                 best_score = score
                 best_move = move
 
         return best_move if best_move else random.choice(possible_moves)
-    def _minimax(self, board: HexBoard, depth: int, is_maximizing: bool) -> float:
+    def _minimax(self, board: HexBoard, depth: int, is_maximizing: bool,alpha: float, beta: float) -> float:
         opponent = 2 if self.player_id == 1 else 1
 
         # Terminal conditions
@@ -40,7 +42,6 @@ class IAPlayer(Player):
         if board.check_connection(opponent):
             return -1000
         if depth == 0 or not board.get_possible_moves():
-            # Basic evaluation: returns 0 (to be improved later)
             return 0
 
         possible_moves = board.get_possible_moves()
@@ -50,23 +51,51 @@ class IAPlayer(Player):
             for move in possible_moves:
                 new_board = board.clone()
                 new_board.place_piece(move[0], move[1], self.player_id)
-                eval = self._minimax(new_board, depth - 1, False)
-                best_eval = max(best_eval, eval)
-            return best_eval
+                max_eval = max(max_eval, eval)
+                alpha = max(alpha, eval)
+                if beta <= alpha:
+                    break  
+            return max_eval
         else:
-            best_eval = float('inf')
+            min_eval = float('inf')
             for move in possible_moves:
                 new_board = board.clone()
                 new_board.place_piece(move[0], move[1], opponent)
-                eval = self._minimax(new_board, depth - 1, True)
-                best_eval = min(best_eval, eval)
-            return best_eval
+                eval = self._minimax(new_board, depth - 1, True, alpha, beta)
+                min_eval = min(min_eval, eval)
+                beta = min(beta, eval)
+                if beta <= alpha:
+                    break  
+            return min_eval
+
+    def _evaluate_board(self, board: HexBoard) -> float:
+        opponent = 2 if self.player_id == 1 else 1
+        score = 0
+        my_positions = board.player_positions[self.player_id]
+        opp_positions = board.player_positions[opponent]
+        for pos in my_positions:
+            score += 10 - (abs(pos[0] - board.size // 2) + abs(pos[1] - board.size // 2))
+        for pos in opp_positions:
+            score -= 10 - (abs(pos[0] - board.size // 2) + abs(pos[1] - board.size // 2))
+        if self.player_id == 1: 
+            for pos in my_positions:
+                if pos[1] == 0:
+                    score += 15
+                if pos[1] == board.size - 1:
+                    score += 15
+        else: 
+            for pos in my_positions:
+                if pos[0] == 0:
+                    score += 15
+                if pos[0] == board.size - 1:
+                    score += 15
+
+        return score
 
     def _sort_moves(self, board: HexBoard, moves: list) -> list:
         move_scores = []
         for move in moves:
             score = - (abs(move[0] - board.size // 2) + abs(move[1] - board.size // 2))
-            # Prioritize strategic border moves based on the player
             if self.player_id == 1:
                 if move[1] == 0 or move[1] == board.size - 1:
                     score += 5
