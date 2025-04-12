@@ -5,9 +5,10 @@ Un juego de Hex implementado en Python con capacidades de IA.
 ## Descripción
 
 Hex es un juego de estrategia para dos jugadores que se juega en un tablero hexagonal. El objetivo es crear un camino continuo que conecte los lados opuestos del tablero con fichas del mismo color.
+ 
+- Jugador 1 (🔵): Conecta el lado izquierdo con el derecho
+- Jugador 2 (🔴): Conecta el lado superior con el inferior
 
-- Jugador 1 (🔴): Conecta el lado superior con el inferior
-- Jugador 2 (🔵): Conecta el lado izquierdo con el derecho
 
 ## Características
 
