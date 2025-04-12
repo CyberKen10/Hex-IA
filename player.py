@@ -1,17 +1,11 @@
 from hex_board import HexBoard
 import math
 from typing import List
-
-# Definición de la clase base Player
-# Esta clase representa un jugador en el juego Hex.
 class Player:
     def __init__(self, player_id: int):
         self.player_id = player_id  # 1 (rojo) or 2 (azul)
-
     def play(self, board: "HexBoard") -> tuple:
         raise NotImplementedError("Implement this method!")
-    
-
 class IAPlayer(Player):
     def __init__(self, player_id: int):
         super().__init__(player_id)
@@ -20,15 +14,11 @@ class IAPlayer(Player):
         self.directions = [(0, 1), (1, 0), (1, -1), (-1, 0), (-1, 1), (0, -1)]
         self.cache = {}
         self.eval_cache = {}  # Cache para evaluaciones de estado
-
     def play(self, board: HexBoard) -> tuple:
         self.board_size = board.size
-        possible_moves = board.get_possible_moves()
-        
+        possible_moves = board.get_possible_moves()  
         if not possible_moves:
             return (-1, -1)
-
-        # Primer movimiento: jugar cerca del centro
         if self.rounds == 0:
             center = self.board_size // 2
             for dx in [-1, 0, 1]:
@@ -39,13 +29,11 @@ class IAPlayer(Player):
                         return pos
             self.rounds += 1
             return possible_moves[0]
-
         # Verificar movimientos ganadores o bloqueadores
         winner, play_winner = self.one_move_to_win(board, self.player_id)
         if winner != 0 and play_winner in possible_moves:
             self.rounds += 1
             return play_winner
-
         # Determinar profundidad dinámicamente según celdas vacías
         empty_cells = len(possible_moves)
         if empty_cells > (self.board_size * self.board_size) // 2:
@@ -54,48 +42,37 @@ class IAPlayer(Player):
             depth = 3
         else:
             depth = 4
-
         # Usar Minimax con la profundidad determinada
         move = self.minimax_alpha_beta(board, depth, -float('inf'), float('inf'), True)[1]
-        
         if move not in possible_moves:
             move = possible_moves[0]
-
         self.rounds += 1
         return move
-
     def one_move_to_win(self, board: HexBoard, player_id: int) -> tuple[int, tuple[int, int]]:
         possible_moves = board.get_possible_moves()
         opponent = 3 - player_id
-
         # Verificar si el oponente podría ganar en un solo movimiento
         for i, j in possible_moves:
             temp_board = board.clone()
             temp_board.place_piece(i, j, opponent)
             if temp_board.check_connection(opponent):
                 return (-1, (i, j))
-
         # Verificar si yo puedo ganar en un solo movimiento
         for i, j in possible_moves:
             temp_board = board.clone()
             temp_board.place_piece(i, j, player_id)
             if temp_board.check_connection(player_id):
                 return (1, (i, j))
-
         return (0, (-1, -1))
-
     def minimax_alpha_beta(self, board: HexBoard, depth: int, alpha: float, beta: float, maximizing_player: bool) -> tuple[float, tuple]:
         opponent = 3 - self.player_id
-
         if board.check_connection(self.player_id):
             return (float('inf'), (-1, -1))
         if board.check_connection(opponent):
             return (-float('inf'), (-1, -1))
         if depth == 0 or not board.get_possible_moves():
             return (self.evaluate_game_state(board), (-1, -1))
-
         possible_moves = self._sort_moves(board, board.get_possible_moves())
-
         if maximizing_player:
             max_eval = -float('inf')
             best_move = (-1, -1)
@@ -124,18 +101,14 @@ class IAPlayer(Player):
                 if beta <= alpha:
                     break
             return (min_eval, best_move)
-
     def evaluate_game_state(self, board: HexBoard) -> float:
         # Usar cache para evitar recalcular
         board_state = tuple(map(tuple, board.board))
         if board_state in self.eval_cache:
             return self.eval_cache[board_state]
-
         my_cost = self._astar_search(board.board, self.player_id)
-        opp_cost = self._astar_search(board.board, 3 - self.player_id)
-        
-        connection_diff = self.count_connections(board, self.player_id) - self.count_connections(board, 3 - self.player_id)
-        
+        opp_cost = self._astar_search(board.board, 3 - self.player_id)  
+        connection_diff = self.count_connections(board, self.player_id) - self.count_connections(board, 3 - self.player_id)  
         if my_cost == 0:
             score = float('inf')
         elif opp_cost == 0:
@@ -147,10 +120,8 @@ class IAPlayer(Player):
             elif opp_cost <= 2:
                 threat_penalty = -5000 / (opp_cost + 1)
             score = 1 / (my_cost + 1e-6) + opp_cost + 0.1 * connection_diff + threat_penalty
-        
         self.eval_cache[board_state] = score
         return score
-
     def count_connections(self, board: HexBoard, player: int) -> int:
         count = 0
         visited_pairs = set()
@@ -166,37 +137,30 @@ class IAPlayer(Player):
                                 visited_pairs.add(pair)
                                 count += 1
         return count
-
     def _sort_moves(self, board: HexBoard, moves: list) -> list:
         center = self.board_size // 2
         move_scores = []
         opponent = 3 - self.player_id
-
         for move in moves:
             i, j = move
             score = 0
-
             # Priorizar movimientos cerca de piezas existentes
             num_adj_total = sum(1 for dx, dy in self.directions 
                                 if 0 <= i + dx < self.board_size and 0 <= j + dy < self.board_size 
                                 and board.board[i + dx][j + dy] != 0)
             score += num_adj_total * 3
-
             # Cercanía al centro
             score -= abs(i - center) + abs(j - center)
-
             # Conexiones con mis piezas
             num_adj_my = sum(1 for dx, dy in self.directions 
                             if 0 <= i + dx < self.board_size and 0 <= j + dy < self.board_size 
                             and board.board[i + dx][j + dy] == self.player_id)
             score += num_adj_my * 2
-
             # Bloqueo al oponente
             num_adj_opp = sum(1 for dx, dy in self.directions 
                              if 0 <= i + dx < self.board_size and 0 <= j + dy < self.board_size 
                              and board.board[i + dx][j + dy] == opponent)
             score += num_adj_opp * 1
-
             # Bonus por bordes relevantes:
             # Para jugador 1 (horizontal) se premia si está en la primera o última columna.
             # Para jugador 2 (vertical) se premia si está en la primera o última fila.
@@ -208,21 +172,17 @@ class IAPlayer(Player):
                     score += 5
 
             move_scores.append((move, score))
-
         return [move for move, _ in sorted(move_scores, key=lambda x: x[1], reverse=True)]
-
     def _heuristic(self, x: int, y: int, player: int) -> float:
         # Para jugador 1: distancia horizontal (columna) al borde derecho.
         # Para jugador 2: distancia vertical (fila) al borde inferior.
         if player == 1:
             return abs(self.board_size - 1 - y)
         return abs(self.board_size - 1 - x)
-
     def _astar_search(self, board: List[List[int]], player: int) -> float:
         n = self.board_size
         distances = [[math.inf] * n for _ in range(n)]
         heap = []
-
         if player == 1:  # Jugador 1: horizontal (izquierda-derecha)
             for i in range(n):
                 if board[i][0] == player:
@@ -234,7 +194,6 @@ class IAPlayer(Player):
                 distances[i][0] = cost
                 h = self._heuristic(i, 0, player)
                 heap.append((cost + h, cost, i, 0))
-
             best = math.inf
             target_col = n - 1
             while heap:
@@ -265,7 +224,6 @@ class IAPlayer(Player):
                 distances[0][j] = cost
                 h = self._heuristic(0, j, player)
                 heap.append((cost + h, cost, 0, j))
-
             best = math.inf
             target_row = n - 1
             while heap:
